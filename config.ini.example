@@ -1,10 +1,14 @@
 [DEFAULT]
-# IP of the OpenEPaperLink access point
+# OpenEPaperLink Stuff
 ACCESSPOINTIP = 
+MAC = 
 
-# URL and Token for the InvenTree instance
-INVENTREEURL = 
-INVENTREETOKEN = 
+# Calendar Caldav Stuff
+CALDAV_URL = 
+CAL_USERNAME = 
+CAL_PASSWORD = 
+CALENDAR_NAME = 
+TIMEZONE = GMT
 
 # Style
 TITLEFONT = fonts/Roboto-SemiBold.ttf
