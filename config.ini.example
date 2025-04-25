@@ -7,7 +7,9 @@ MAC =
 CALDAV_URL = 
 CAL_USERNAME = 
 CAL_PASSWORD = 
-CALENDAR_NAME = 
+CALENDAR_NAME = Calendar 1,Calendar 2
+# 0-2 are the palette colors, 3-5 are the palette colors again but dithered
+CALENDAR_COLOR = 2,5
 TIMEZONE = GMT
 
 # Style
