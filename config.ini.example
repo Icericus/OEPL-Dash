@@ -1,26 +1,24 @@
 [DEFAULT]
 # OpenEPaperLink Stuff
-ACCESSPOINTIP = 
-MAC = 
+ACCESSPOINTIP =
+MAC =
 
-# Calendar Caldav Stuff
-CALDAV_URL = 
-CAL_USERNAME = 
-CAL_PASSWORD = 
+# Calendar Stuff
+CALDAV_URL =
+CAL_USERNAME =
+CAL_PASSWORD =
 CALENDAR_NAME = Calendar 1,Calendar 2
-# 0-2 are the palette colors, 3-5 are the palette colors again but dithered
 CALENDAR_COLOR = 2,5
-TIMEZONE = GMT
+TIMEZONE = CET
+CALENDAR_FONT = fonts/Roboto-SemiBold.ttf
 
-# Style
-TITLEFONT = fonts/Roboto-SemiBold.ttf
-TITLEFONTSIZE = 25
-TITLEPOSITION = 0
-INVENTORYFONT = fonts/Roboto-SemiBold.ttf
-INVENTORYFONTSIZE = 15
-LOCATIONFONT = fonts/Roboto-SemiBold.ttf
-LOCATIONFONTSIZE = 14
-LOCATIONPOSITION = 1
+# Weather Stuff
+LATITUDE = 50
+LONGITUDE = 10
+WEATHER_FONT = fonts/Roboto-SemiBold.ttf
+
+# Header Stuff
+HEADER_FONT = fonts/Roboto-SemiBold.ttf
 
 # Debug
 SKIPUPLOAD = False

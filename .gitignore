@@ -1,4 +1,7 @@
 current/
 stuff/
+experiments/
 config.ini
 .vscode/
+__pycache__/
+.ropeproject/

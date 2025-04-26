@@ -1,15 +1,9 @@
 import os
-import sys
-import requests
-import json
+import configparser
 import caldav
 from datetime import datetime, timedelta
 import pytz
-import configparser
 from PIL import Image, ImageDraw, ImageFont
-
-tagdict = {} # machash: (mac, hwtype)
-hwtypedict = {} # hwtype: (width, height)
 
 config = configparser.ConfigParser()
 config.read("config.ini")
@@ -21,25 +15,6 @@ def getConfig(key, section='DEFAULT'):
         return env_value
     # If not set, return the value from the config file
     return config.get(section, key)
-
-def getTagdata():
-    tagdb = requests.get("http://" + getConfig("ACCESSPOINTIP") + "/current/tagDB.json")
-    hwtypeset = set()
-    for tag in tagdb.json():
-        match tag:
-            case [{"mac": str() as mac, "hwType": int() as hwtype}]:
-                if hwtype >= 224:
-                    continue
-                tagdict[mac] = hwtype
-                hwtypeset.add(hwtype)
-    # with the set of hwtypes we get the hardware json files from the AP for the resolution data
-    for hwtype in hwtypeset:
-        hwfilename = str("%0.2X" % hwtype) + ".json"
-        typejson = requests.get("http://" + getConfig("ACCESSPOINTIP") + "/tagtypes/" + hwfilename)
-        match typejson.json():
-            case {"width": int() as width, "height": int() as height, "colortable": dict() as colortable}:
-                accent = {k: v for k, v in colortable.items() if k in ['red', 'yellow']}
-                hwtypedict[hwtype] = (width, height, accent)
 
 def dith_rounded_rectangle(draw, xy, radius, fill=0, outline=None, width=1):
     (x1, y1), (x2, y2) = xy
@@ -83,7 +58,17 @@ def tzConvert(dt):
         dt = GMT.localize(dt)
     return dt.astimezone(pytz.timezone(getConfig("TIMEZONE")))
 
-def drawCalendar():
+def textShortener(draw, displaywidth, text, font):
+    textbounds = draw.textbbox((0, 0), text, font=font)
+    textlength = len(text)
+    trailingdot = ""
+    while textbounds[2] >= displaywidth:
+        textlength -= 1
+        textbounds = draw.textbbox((0, 0), text[:textlength], font=font)
+        trailingdot = "."
+    return text[:textlength] + trailingdot
+
+def drawCalendar(tagaccent):
     client = caldav.DAVClient(getConfig("CALDAV_URL"), username=getConfig("CAL_USERNAME"), password=getConfig("CAL_PASSWORD"))
     principal = client.principal()
     calendars = principal.calendars()
@@ -112,7 +97,7 @@ def drawCalendar():
         calevents = cal.date_search(start=start_time, end=end_time)
         for event in calevents:
             events.append((event, int(getConfig("CALENDAR_COLOR").split(",")[index])))
-    
+
 
     for event in events:
         try:
@@ -129,10 +114,7 @@ def drawCalendar():
     datetime_events = sorted(datetime_events, key=lambda event: event[0].vobject_instance.vevent.dtstart.value)
 
     # drawing part
-    mac = getConfig("MAC")
-    hwtype = tagdict[mac]
     width, height = 300, 480
-    tagaccent = hwtypedict[hwtype][2]
     image = Image.new("P", (width, height))
     palette = [
         255, 255, 255,
@@ -142,7 +124,7 @@ def drawCalendar():
     image.putpalette(palette)
     draw = ImageDraw.Draw(image)
 
-    font = ImageFont.load_default()
+    font = ImageFont.truetype(getConfig("CALENDAR_FONT"), 13)
     column_width = width // 2
     hour_height = height // 28
     for i in range(4, 28):
@@ -175,7 +157,7 @@ def drawCalendar():
         y_end = (index + 2) * hour_height - 1
 
         dith_rounded_rectangle(draw, [(x + 2, y_start), (x + column_width - 2, y_end)], 6, fill=event_color, outline=1, width=1)
-        draw.text((x + 10, y_start + 2), textShortener(draw, column_width - 20, event_name, font), fill=1, font=font)
+        draw.text((x + 10, y_start), textShortener(draw, column_width - 20, event_name, font), fill=1, font=font)
 
 
 
@@ -226,58 +208,7 @@ def drawCalendar():
 
     return image
 
-def getWeatherdata():
-    pass
-
-def textShortener(draw, displaywidth, text, font):
-    textbounds = draw.textbbox((0, 0), text, font=font)
-    textlength = len(text)
-    trailingdot = ""
-    while textbounds[2] >= displaywidth:
-        textlength -= 1
-        textbounds = draw.textbbox((0, 0), text[:textlength], font=font)
-        trailingdot = "."
-    return text[:textlength] + trailingdot
-
-def displayUpload():
-    mac = getConfig("MAC")
-    hwtype = tagdict[mac]
-    tagwidth = hwtypedict[hwtype][0]
-    tagheight = hwtypedict[hwtype][1]
-    tagaccent = hwtypedict[hwtype][2]
-    imagepath = "./current/" + mac + ".jpg"
-    payload = {"dither": 0, "mac": mac}
-    url = "http://" + getConfig("ACCESSPOINTIP") + "/imgupload"
-    print("Generating image for tag " + mac)
-    image = Image.new('P', (tagwidth, tagheight))
-    palette = [
-        255, 255, 255,
-        0, 0, 0,
-        next(iter(tagaccent.values()))[0], next(iter(tagaccent.values()))[1], next(iter(tagaccent.values()))[2]
-    ]
-    image.putpalette(palette)
-    draw = ImageDraw.Draw(image)
-
-    print("Drawing Date")
-    # draw date here
-    print("Drawing calendar")
-    image.paste(drawCalendar(), (500,0))
-    print("Drawing weather")
-    # draw weather here
-
-    rgb_image = image.convert('RGB')
-    print("Exporting image to " + imagepath)
-    rgb_image.save(imagepath, 'JPEG', quality="maximum")
-    if getConfig("SKIPUPLOAD") == "False" or getConfig("SKIPUPLOAD") == "false":
-        print("Uploading to " + url)
-        files = {"file": open(imagepath, "rb")}
-        response = requests.post(url, data=payload, files=files)
-        if response.status_code == 200:
-            print("Image uploaded successfully to " + mac)
-        else:
-            print("Failed to upload the image.")
-
-getTagdata()
-# drawCalendar().show()
-displayUpload()
-
+if __name__ == "__main__":
+    tagaccent = {}
+    tagaccent["yellow"] = [255,255,0]
+    drawCalendar(tagaccent).save("calendar-dashboard.png")
