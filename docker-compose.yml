@@ -1,0 +1,19 @@
+services:
+  oepl-dash:
+    image: ghcr.io/icericus/oepl-dash:main
+    container_name: oepl-dash
+    volumes:
+      - ./fonts:/app/fonts
+    env_file:
+      - .env
+
+  restarter:
+    image: docker:cli
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
+    command:
+      [
+        "/bin/sh",
+        "-c",
+        "while true; do sleep 1800; docker start oepl-dash; done",
+      ]
+    restart: unless-stopped
